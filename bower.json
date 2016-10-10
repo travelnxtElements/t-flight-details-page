@@ -1,0 +1,24 @@
+{
+  "name": "t-flight-details-page",
+  "description": "Page component for flight details which includes fare component and pricing logic as well",
+  "main": "t-flight-details-page.html",
+  "dependencies": {
+    "polymer": "Polymer/polymer#^1.4.0",
+    "iron-flex-layout": "PolymerElements/iron-flex-layout#^1.2.1",
+    "t-notify": "atomelements/t-notify#^1.0.0",
+    "t-button": "atomelements/t-button#^1.0.0",
+    "t-image": "atomelements/t-image#^1.0.0",
+    "t-shared-lib": "travelnxtElements/t-shared-lib#^1.0.0",
+    "t-sessionstorage": "travelnxtElements/t-sessionstorage#^1.0.0",
+    "t-itinerary": "travelnxtElements/t-itinerary#^1.2.2",
+    "t-text-container": "travelnxtElements/t-text-container#^1.0.0",
+    "t-behavior": "travelnxtelements/t-behavior#^1.0.0",
+    "t-api-components": "travelnxtelements/t-api-components#master"
+  },
+  "devDependencies": {
+    "iron-component-page": "PolymerElements/iron-component-page#^1.0.0",
+    "iron-demo-helpers": "PolymerElements/iron-demo-helpers#^1.0.0",
+    "web-component-tester": "^4.0.0",
+    "webcomponentsjs": "webcomponents/webcomponentsjs#^0.7.0"
+  }
+}

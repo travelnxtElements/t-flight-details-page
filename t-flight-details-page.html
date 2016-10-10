@@ -1,0 +1,341 @@
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../t-notify/t-notify.html">
+<link rel="import" href="../t-button/t-button.html">
+<link rel="import" href="../t-image/t-image.html">
+<link rel="import" href="../t-shared-lib/t-date-behavior.html">
+<link rel="import" href="../t-sessionstorage/t-sessionstorage.html">
+<link rel="import" href="../t-itinerary/t-itinerary.html">
+<link rel="import" href="../t-api-components/t-shopping-cart-add-item-api.html">
+<link rel="import" href="../t-api-components/t-shopping-cart-remove-all-api.html">
+<link rel="import" href="../t-text-container/travel-element-styles.html">
+<link rel="import" href="../iron-flex-layout/iron-flex-layout-classes.html"/>
+<link rel="import" href="../t-behavior/t-page-behavior.html">
+<link rel="import" href="../t-behavior/t-session-behavior.html"/>
+
+
+
+<dom-module id="t-flight-details-page">
+
+    <template>
+        <style include="iron-flex"></style>
+        <style include="travel-element-styles">
+            :host {
+                display: block;
+            }
+
+            .item{
+                padding: 10px 0;
+            }
+
+            #btnContinue{
+                display: block;
+                margin: var(--normal-spacing,10px);
+            }
+        </style>
+
+        <content select="t-header"></content>
+
+        <t-notify id="notify"></t-notify>
+
+        <t-shopping-cart-remove-all-api
+            id="removeCartItemApi" 
+            loading="{{loading}}"
+            api-base-url="[[apiBaseUrl]]" 
+            api-relative-url="api/ShoppingCart/remove/all" 
+            auth-token="[[authToken]]"
+            on-t-shopping-cart-remove-all-api-success="onRemoveCartSuccess"
+            on-t-shopping-cart-remove-all-api-error="onRemoveCartError">
+        </t-shopping-cart-remove-all-api>
+
+        <t-shopping-cart-add-item-api
+            id="addCartApi" 
+            loading="{{loading}}" 
+            api-base-url="[[apiBaseUrl]]"
+            api-relative-url="api/ShoppingCart/add" 
+            auth-token="[[authToken]]"
+            on-t-shopping-cart-add-item-api-success="onAddCartSuccess"
+            on-t-shopping-cart-add-item-api-error="onAddCartError">
+        </t-shopping-cart-add-item-api>
+
+        <t-itinerary
+            id="flightItinerary"
+            show-twelve-hour-clock="[[hasAmPmTimeFormat]]"
+            flight-data="[[_flightData]]"
+            inventory-id="[[inventoryId]]"
+            base-api-url="[[apiBaseUrl]]"
+            auth-token="[[authToken]]"
+            search-id="[[searchId]]"
+            baggage-url="[[baggageUrl]]"
+            baggage-base-url="[[baggageBaseUrl]]"
+            show-fare-rules="[[showFareRules]]"
+            show-baggage-rules="[[showBaggageRules]]">
+        </t-itinerary>
+
+        <t-faredetails 
+            id="fareDetails"
+            is-collapsible
+            itinerary-fare-label="[[_itineraryFareLabel]]">
+        </t-faredetails>
+
+        <t-button 
+            id="btnContinue" 
+            class="primary flex" 
+            label="continue" 
+            on-tap="onBtnContinueClick">                
+        </t-button>
+
+        <t-sessionstorage
+            id="sessionStore"
+            api-url-format="[[apiUrlFormat]]"
+            on-t-sessionstorage-load-success="_onSessionGet"
+            on-t-sessionstorage-save-success="_onSessionSave">
+        </t-sessionstorage>
+    </template>
+
+    <script>
+        (function () {
+
+            'use strict'
+
+            Polymer({
+
+                is: 't-flight-details-page',
+
+                behaviors: [
+                    TravelNxt.Behaviors.DateBehavior,
+                    TravelNxt.Behaviors.PageBehavior,
+                    TravelNxt.Behaviors.SessionBehavior
+                ],
+
+                properties: {
+
+                    detailsConstructor: {
+                        type: Object
+                    },
+
+                    _detailsConstructor: {
+                        type: Object,
+                        readOnly: true
+                    },
+
+                    _itineraryFareLabel: {
+                        type: String,
+                        value: "One Way Trip Fare"
+                    },
+
+                    /**
+                     * Parameters required for translation to get pricing request object
+                     * @type {Object}
+                     */
+                    pricingRequestParams: {
+                        type: Object
+                    },
+
+                    hasAmPmTimeFormat: {
+                      type: Boolean,
+                      value: false
+                    },
+
+                    _flightData: Array,
+
+                    baggageUrl: String,
+
+                    baggageBaseUrl: String,
+
+                    showFareRules: Boolean,
+
+                    showBaggageRules: Boolean
+                },
+
+                listeners: {
+                    'session-get-complete': '_updatePage'
+                },
+
+                /*
+                 * Observer nethods
+                 */
+                observers: [
+                    '__pageLoad(visible)',
+                    '__updatePage(detailsConstructor)'
+                ],
+
+
+                /*
+                 * observer function for page `visible` property
+                */
+                __pageLoad: function (visible) {
+                    if (!visible) {
+                        return;
+                    }
+
+                    this._syncSession();
+                },
+
+                _updatePage: function (detailsConstructor) {
+
+                    if (!this.itinerary || !this.searchId || !this.searchCriteria) {
+                        this.fire('go-to-search');
+                    }
+
+                    if (this.inventoryId === this.itinerary.id) {
+                        return;
+                    }
+
+                    this.inventoryId = this.itinerary.id;
+
+                    this._flightData = null;
+
+                    this._flightData = this.itinerary.legs;
+                    this._itineraryFareLabel = 
+                        this.itinerary.itineraryType.toLowerCase() == 'oneway' ? 'One Way Trip Fare' : 'Round Trip Fare';
+
+                    this.$.fareDetails.data = null;
+                    this.$.fareDetails.$.loaderContainer.hidden = false;
+                    this.$.fareDetails.error = false;
+
+                    this.$.btnContinue.disabled = true;
+
+                    this.$.removeCartItemApi.remove();
+                },
+
+                /*
+                 * success callback handler for `t-shopping-cart-remove-all-api` component
+                */
+                onRemoveCartSuccess: function (e) {
+                    this.$.addCartApi.add(this._buildAddCartRequest());
+                },
+
+                /**
+                 * builds request for add to cart api call
+                 * @return {Object}
+                 */
+                _buildAddCartRequest: function () {
+                    //this is translator part, we can move it to translator
+                    //kept it here because translation is simple
+                    return {
+                        itemInfos: [{
+                            searchId: this.searchId,
+                            inventoryId: this.itinerary.id
+                        }]
+                    }
+                },
+
+
+                /*
+                 * error callback handler for `t-shopping-cart-remove-all-api` component
+                */
+                onRemoveCartError: function (e) {
+                    this.$.fareDetails.error = true;
+                },
+
+                /*
+                 * success callback handler for `t-shopping-cart-add-item-api` component
+                */
+                onAddCartSuccess: function (e) {
+                    
+                    if (!e.detail.addToCartItemResult || !e.detail.addToCartItemResult.length) {
+                        this.$.fareDetails.error = true;
+                        throw Error('failed to add itinerary in the cart!');
+                    }
+
+                    //detect fare change
+                    this.fareChange = e.detail.addToCartItemResult[0].fareChange;
+
+                    this.itinerary = e.detail.addToCartItemResult[0].inventory;
+
+                    this._data = [{
+                        key: 'Flight_Itinerary',
+                        value: this.itinerary
+                    }];
+
+                    this.setSession();
+
+                    if (this.itinerary) {
+                        this._setFareDetails();
+                    }
+
+                    this.$.btnContinue.disabled = false;
+                },
+
+                /*
+                 * error callback handler for `t-shopping-cart-add-item-api` component
+                */
+                onAddCartError: function (e) {
+                    this.$.fareDetails.error = true;
+                },
+
+                /*
+                 * continue button tap event handler
+                */
+                onBtnContinueClick: function () {
+                    if (this.$.btnContinue.disabled) {
+                        return;
+                    }
+                    this.fire('pricing-success');
+                },
+
+                _getPassengerDetails: function(data) {
+                    var passengers = [
+                    {
+                        "quantity": data.adult,
+                        "type": "Adult",
+                        "ages": []
+                    },
+                    {
+                        "quantity": data.child,
+                        "type": "Child",
+                        "ages": []
+                    },
+                    {
+                        "quantity": 0,
+                        "type": "Senior",
+                        "ages": []
+                    },
+                    {
+                        "quantity": data.infant,
+                        "type": "Infant",
+                        "ages": []
+                    }
+                    ]
+
+                    return passengers;
+                },
+
+                /*
+                 * translator method to set view components data
+                */
+                _setFareDetails: function () {
+                    if (!this.itinerary) {
+                        return;
+                    }
+
+                    if (this.itinerary.fare && this.itinerary.fare.components) {
+                        this.$.fareDetails.data = this.itinerary.fare.components.filter(function (item) {
+                            return item.type.toLowerCase() !== 'basefare';
+                        });
+
+                        this.$.fareDetails.fareChange = this.fareChange;
+
+                        this.$.fareDetails.passengerDetails = this._getPassengerDetails(this.searchCriteria);
+                    }
+                },
+
+                _syncSession: function () {
+                    this._data = [{
+                        key: 'Flight_Search_Id',
+                        propertyName: 'searchId'
+                    }, {
+                        key: 'Flight_Itinerary',
+                        propertyName: 'itinerary'
+                    }, {
+                        key: 'Flight_Search_Criteria',
+                        propertyName: 'searchCriteria'
+                    }];
+
+                    this.getSession();
+                }
+            });
+
+        })();
+    </script>
+</dom-module>
