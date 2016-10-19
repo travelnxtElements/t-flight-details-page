@@ -10,6 +10,7 @@
 <link rel="import" href="../t-text-container/travel-element-styles.html">
 <link rel="import" href="../iron-flex-layout/iron-flex-layout-classes.html"/>
 <link rel="import" href="../t-behavior/t-page-behavior.html">
+<link rel="import" href="../t-behavior/t-flight-page-behavior.html">
 <link rel="import" href="../t-behavior/t-session-behavior.html"/>
 
 
@@ -104,7 +105,8 @@
                 behaviors: [
                     TravelNxt.Behaviors.DateBehavior,
                     TravelNxt.Behaviors.PageBehavior,
-                    TravelNxt.Behaviors.SessionBehavior
+                    TravelNxt.Behaviors.SessionBehavior,
+                    TravelNxt.Behaviors.FlightPageBehavior
                 ],
 
                 properties: {
@@ -186,9 +188,8 @@
                     this._flightData = null;
 
                     this._flightData = this.itinerary.legs;
-                    this._itineraryFareLabel = 
-                        this.itinerary.itineraryType.toLowerCase() == 'oneway' ? 'One Way Trip Fare' : 'Round Trip Fare';
-
+                    
+                    this._itineraryFareLabel = this._getItineraryFareLabel();
                     this.$.fareDetails.data = null;
                     this.$.fareDetails.$.loaderContainer.hidden = false;
                     this.$.fareDetails.error = false;
@@ -274,32 +275,6 @@
                     this.fire('pricing-success');
                 },
 
-                _getPassengerDetails: function(data) {
-                    var passengers = [
-                    {
-                        "quantity": data.adult,
-                        "type": "Adult",
-                        "ages": []
-                    },
-                    {
-                        "quantity": data.child,
-                        "type": "Child",
-                        "ages": []
-                    },
-                    {
-                        "quantity": 0,
-                        "type": "Senior",
-                        "ages": []
-                    },
-                    {
-                        "quantity": data.infant,
-                        "type": "Infant",
-                        "ages": []
-                    }
-                    ]
-
-                    return passengers;
-                },
 
                 /*
                  * translator method to set view components data
@@ -310,13 +285,11 @@
                     }
 
                     if (this.itinerary.fare && this.itinerary.fare.components) {
-                        this.$.fareDetails.data = this.itinerary.fare.components.filter(function (item) {
-                            return item.type.toLowerCase() !== 'basefare';
-                        });
+                        this.$.fareDetails.data = this.itinerary.fare.components;
 
                         this.$.fareDetails.fareChange = this.fareChange;
 
-                        this.$.fareDetails.passengerDetails = this._getPassengerDetails(this.searchCriteria);
+                        this.$.fareDetails.passengerDetails = this._getPassengerDetails();
                     }
                 },
 
