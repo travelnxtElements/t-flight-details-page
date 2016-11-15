@@ -17,7 +17,7 @@
     "t-itinerary": "travelnxtElements/t-itinerary#^1.2.2",
     "t-text-container": "travelnxtElements/t-text-container#^1.0.0",
     "t-behavior": "travelnxtelements/t-behavior#^1.0.0",
-    "t-api-components": "travelnxtelements/t-api-components#master"
+    "t-api-components": "travelnxtelements/t-api-components#^1.0.0"
   },
   "devDependencies": {
     "iron-component-page": "PolymerElements/iron-component-page#^1.0.0",
